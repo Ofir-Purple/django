@@ -202,6 +202,31 @@ class OperationTests(MigrationTestBase):
             operation.database_backwards("test_dlmo", editor, new_state, project_state)
         self.assertTableExists("test_dlmo_pony")
 
+    def test_delete_model_and_related_foreign_key_column(self):
+        """
+        Tests bug #22395: Deleting a model and THEN the fields that relate to 
+        it results in ValueError.
+        """
+        project_state = self.set_up_test_model("test_dlmofkc", related_model=True)
+
+        operations = [
+            migrations.DeleteModel(
+                name="Pony",
+            ),
+            migrations.RemoveField(
+                model_name="Rider",
+                name="pony",
+            ),
+        ]
+
+        for operation in operations:
+            new_state = project_state.clone()
+            operation.state_forwards("test_dlmofkc", new_state)
+            with connection.schema_editor() as editor:
+                operation.database_forwards("test_dlmofkc", editor, project_state, new_state)
+
+        # project_state = self.apply_operations("test_dlmofkc", project_state, operations=operations)
+
     def test_rename_model(self):
         """
         Tests the RenameModel operation.
